@@ -21,6 +21,8 @@ QUERY
 EVAL
   questions with known correct sections → hit@k and MRR, per search mode
 ```
+<img width="1014" height="784" alt="image" src="https://github.com/user-attachments/assets/1bbd6bea-5e8c-4f0f-9a02-8ce9c1b9a825" />
+
 
 ## Setup
 
