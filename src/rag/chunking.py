@@ -114,8 +114,8 @@ def chunk_markdown(text: str, doc_path: str, max_tokens: int = 800) -> list[Chun
 
 # a helper function that creates the correct heading path for each chunk
 def generate_heading_paths(levels, current_level, current_title) -> str:
-    if current_level <= len(levels):
-        del levels[current_level - 1:]
-    levels.append(current_title)
+    while levels and levels[-1][0] >= current_level:
+        levels.pop()
+    levels.append((current_level, current_title))
 
-    return ' > '.join(levels)
+    return ' > '.join(title for _, title in levels)

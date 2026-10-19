@@ -101,6 +101,16 @@ def test_rule4_skipping_levels_still_works():
     ]
 
 
+def test_rule4_siblings_after_skipped_level():
+    # Real docs do this: faqs/api_key_types.md goes from "#" straight to "###".
+    md = "# Doc\n\nIntro.\n\n### A\n\nText A.\n\n### B\n\nText B.\n"
+    assert [c.heading_path for c in chunk_markdown(md, "doc.md")] == [
+        "Doc",
+        "Doc > A",
+        "Doc > B",
+    ]
+
+
 # --- Rule 5: content ------------------------------------------------------------
 
 
