@@ -14,14 +14,16 @@ from dataclasses import dataclass
 
 from rag.markdown_utils import AnchorMaker, estimate_tokens  # noqa: F401  (for you to use)
 
+import re
+
 
 @dataclass(frozen=True)
 class Chunk:
-    doc_path: str      # file the chunk came from, e.g. "filters.md"
+    doc_path: str  # file the chunk came from, e.g. "filters.md"
     heading_path: str  # e.g. "Filters > Symbol filters > LOT_SIZE"
-    anchor: str        # GitHub anchor of the section's heading, e.g. "lot_size"
-    content: str       # the section's text, without the heading line itself
-    part: int = 1      # 1, 2, 3... when a long section is split into several chunks
+    anchor: str  # GitHub anchor of the section's heading, e.g. "lot_size"
+    content: str  # the section's text, without the heading line itself
+    part: int = 1  # 1, 2, 3... when a long section is split into several chunks
 
     @property
     def embedding_text(self) -> str:
@@ -82,4 +84,38 @@ def chunk_markdown(text: str, doc_path: str, max_tokens: int = 800) -> list[Chun
          - A single block bigger than max_tokens becomes a part on its own.
          - Number the parts 1, 2, 3...; they share the heading_path and anchor.
     """
-    raise NotImplementedError("Your turn! See the rules in the docstring above.")
+    current_title = None
+    current_lines = []
+    chunks = []
+    anchors = AnchorMaker()
+    levels = []
+    current_heading_path = None
+    for line in text.splitlines():
+        m = re.match(r"(#{1,6}) (.*)", line)
+        if m:
+            content = "\n".join(current_lines).strip()
+            if content:
+                chunck = Chunk(doc_path, current_heading_path, anchor, content)
+                chunks.append(chunck)
+            current_title = m.group(2)
+            current_level = len(m.group(1))
+            current_lines = []
+            anchor = anchors(current_title)
+            current_heading_path = generate_heading_paths(levels, current_level, current_title)
+            
+        elif current_title is not None:
+            current_lines.append(line)
+
+    content = "\n".join(current_lines).strip()
+    if content:
+        chunks.append(Chunk(doc_path, current_heading_path, anchor, content))
+
+    return chunks
+
+# a helper function that creates the correct heading path for each chunk
+def generate_heading_paths(levels, current_level, current_title) -> str:
+    if current_level <= len(levels):
+        del levels[current_level - 1:]
+    levels.append(current_title)
+
+    return ' > '.join(levels)
