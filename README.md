@@ -46,6 +46,7 @@ uv run rag init-db            # create the table and indexes
 | `uv run rag ingest` | Chunk, embed and store everything (replaces existing rows) | ~244k tokens ≈ US$0.005 at $0.02 per 1M tokens (Oct 2026) |
 | `uv run rag init-db --reset` | Drop and recreate the table, deleting all chunks. Needed after changing `EMBEDDING_DIMS` | none |
 | `uv run rag search "your question"` | Search the docs (`--mode` hybrid, vector or keyword; `-k` results). Not implemented yet | one tiny embedding call (hybrid and vector modes) |
+| `uv run rag ask "your question"` | Answer from the top 5 chunks, citing them, with links to each cited section | one embedding call + one `ANSWER_MODEL` call |
 | `uv run pytest` | Run the tests | none |
 
 Set `EMBEDDING_PROVIDER=fake` in `.env` to run `ingest` offline with meaningless vectors, which is useful for testing the pipeline without spending anything.

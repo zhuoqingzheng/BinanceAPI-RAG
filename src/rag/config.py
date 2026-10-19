@@ -21,6 +21,7 @@ class Settings:
     embedding_provider: str  # "openai" or "fake"
     embedding_model: str
     embedding_dims: int
+    answer_model: str
     docs_dir: Path
     docs_repo_url: str = DOCS_REPO_URL
     docs_commit: str = DOCS_COMMIT
@@ -34,5 +35,6 @@ def load_settings() -> Settings:
         embedding_provider=os.getenv("EMBEDDING_PROVIDER", "openai"),
         embedding_model=os.getenv("EMBEDDING_MODEL", "text-embedding-3-small"),
         embedding_dims=int(os.getenv("EMBEDDING_DIMS", "1536")),
+        answer_model=os.getenv("ANSWER_MODEL", "gpt-5-mini"),
         docs_dir=PROJECT_ROOT / "data" / "binance-spot-api-docs",
     )

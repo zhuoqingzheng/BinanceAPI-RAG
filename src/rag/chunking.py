@@ -10,11 +10,10 @@ You can use these helpers (already written, in markdown_utils.py):
   - AnchorMaker()                    turns heading text into GitHub #anchors
 """
 
+import re
 from dataclasses import dataclass
 
-from rag.markdown_utils import AnchorMaker, estimate_tokens  # noqa: F401  (for you to use)
-
-import re
+from rag.markdown_utils import AnchorMaker, estimate_tokens
 
 
 @dataclass(frozen=True)
@@ -90,27 +89,28 @@ def chunk_markdown(text: str, doc_path: str, max_tokens: int = 800) -> list[Chun
     anchors = AnchorMaker()
     levels = []
     current_heading_path = None
+    anchor = None
+    in_code = False
+    text = remove_table_contents(text)
     for line in text.splitlines():
-        m = re.match(r"(#{1,6}) (.*)", line)
+        # Rule 2: a ``` line opens or closes a code block. Inside one, a line
+        # starting with "#" is a code comment, not a heading.
+        if line.strip().startswith("```"):
+            in_code = not in_code
+        m = None if in_code else re.match(r"(#{1,6}) (.*)", line)
         if m:
-            content = "\n".join(current_lines).strip()
-            if content:
-                chunck = Chunk(doc_path, current_heading_path, anchor, content)
-                chunks.append(chunck)
+            chunks.extend(make_chunks(doc_path, current_heading_path, anchor, current_lines, max_tokens))
             current_title = m.group(2)
             current_level = len(m.group(1))
             current_lines = []
             anchor = anchors(current_title)
             current_heading_path = generate_heading_paths(levels, current_level, current_title)
-            
         elif current_title is not None:
             current_lines.append(line)
 
-    content = "\n".join(current_lines).strip()
-    if content:
-        chunks.append(Chunk(doc_path, current_heading_path, anchor, content))
-
+    chunks.extend(make_chunks(doc_path, current_heading_path, anchor, current_lines, max_tokens))
     return chunks
+
 
 # a helper function that creates the correct heading path for each chunk
 def generate_heading_paths(levels, current_level, current_title) -> str:
@@ -119,3 +119,67 @@ def generate_heading_paths(levels, current_level, current_title) -> str:
     levels.append((current_level, current_title))
 
     return ' > '.join(title for _, title in levels)
+
+
+# a helper function that removes the auto-generated table of contents (rule 1)
+def remove_table_contents(text: str) -> str:
+    kept = []
+    in_toc = False
+    for line in text.splitlines():
+        if "<!-- START doctoc" in line:
+            in_toc = True
+        if not in_toc:
+            kept.append(line)
+        if "<!-- END doctoc" in line:
+            in_toc = False
+    return "\n".join(kept)
+
+
+def make_chunks(doc_path, heading_path, anchor, lines, max_tokens) -> list[Chunk]:
+    """Turn one section's lines into chunks: none if empty, several if long."""
+    content = "\n".join(lines).strip()
+    if not content:
+        return []
+    if estimate_tokens(content) <= max_tokens:
+        return [Chunk(doc_path, heading_path, anchor, content)]
+    parts = pack_blocks(split_into_blocks(content), max_tokens)
+    return [
+        Chunk(doc_path, heading_path, anchor, part_text, part_number)
+        for part_number, part_text in enumerate(parts, start=1)
+    ]
+
+
+def split_into_blocks(content: str) -> list[str]:
+    """Split at blank lines outside code blocks, so code blocks stay whole."""
+    blocks = []
+    current = []
+    in_code = False
+    for line in content.splitlines():
+        if line.strip().startswith("```"):
+            in_code = not in_code
+        if line.strip() == "" and not in_code:
+            if current:
+                blocks.append("\n".join(current))
+                current = []
+        else:
+            current.append(line)
+    if current:
+        blocks.append("\n".join(current))
+    return blocks
+
+
+def pack_blocks(blocks: list[str], max_tokens: int) -> list[str]:
+    """Fill each part with consecutive blocks while it stays within max_tokens.
+
+    A block bigger than max_tokens on its own becomes a part by itself.
+    """
+    parts = []
+    current = []
+    for block in blocks:
+        if current and estimate_tokens("\n\n".join(current + [block])) > max_tokens:
+            parts.append("\n\n".join(current))
+            current = []
+        current.append(block)
+    if current:
+        parts.append("\n\n".join(current))
+    return parts

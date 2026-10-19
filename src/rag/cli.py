@@ -62,21 +62,42 @@ def cmd_ingest(args, settings):
     ingest(settings)
 
 
-def cmd_search(args, settings):
+def _search(conn, settings, query: str, mode: str, k: int):
     from rag import search
-    from rag.db import connect
     from rag.embed import get_embedder
 
+    if mode == "keyword":
+        return search.keyword_search(conn, query, k=k)
+    if mode == "vector":
+        [query_vector] = get_embedder(settings).embed([query])
+        return search.vector_search(conn, query_vector, k=k)
+    return search.hybrid_search(conn, get_embedder(settings), query, k=k)
+
+
+def cmd_search(args, settings):
+    from rag.db import connect
+
     with connect(settings.database_url) as conn:
-        if args.mode == "keyword":
-            results = search.keyword_search(conn, args.query, k=args.k)
-        elif args.mode == "vector":
-            [query_vector] = get_embedder(settings).embed([args.query])
-            results = search.vector_search(conn, query_vector, k=args.k)
-        else:
-            results = search.hybrid_search(conn, get_embedder(settings), args.query, k=args.k)
+        results = _search(conn, settings, args.query, args.mode, args.k)
     for rank, r in enumerate(results, start=1):
         print(f"{rank}. [{r.score:.4f}] {r.doc_path} > {r.heading_path}\n   {r.url}")
+
+
+def cmd_ask(args, settings):
+    from rag.answer import answer_question, cited_sources, get_llm
+    from rag.db import connect
+
+    llm = get_llm(settings)  # fails fast if there's no API key
+    with connect(settings.database_url) as conn:
+        results = _search(conn, settings, args.question, args.mode, args.k)
+    answer = answer_question(args.question, results, llm)
+    print(answer.text)
+    # Show the sources the answer cites; all of them if it cites none.
+    sources = cited_sources(answer) or list(enumerate(answer.sources, start=1))
+    if sources:
+        print("\nSources:")
+    for number, r in sources:
+        print(f"[{number}] {r.doc_path} > {r.heading_path}\n    {r.url}")
 
 
 def _shorten(text: str, limit: int) -> str:
@@ -107,6 +128,13 @@ def main() -> None:
     p.add_argument("--mode", choices=["hybrid", "vector", "keyword"], default="hybrid")
     p.add_argument("-k", type=int, default=5)
     p.set_defaults(func=cmd_search)
+
+    p = sub.add_parser("ask", help="answer a question from the docs, with citations")
+    p.add_argument("question")
+    # Vector for now; switch the default to hybrid once hybrid_search is written.
+    p.add_argument("--mode", choices=["hybrid", "vector", "keyword"], default="vector")
+    p.add_argument("-k", type=int, default=5, help="number of chunks the answer is based on")
+    p.set_defaults(func=cmd_ask)
 
     args = parser.parse_args()
     try:
