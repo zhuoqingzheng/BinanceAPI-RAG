@@ -32,8 +32,23 @@ def vector_search(
 
 
 def keyword_search(conn, query: str, k: int = 20) -> list[SearchResult]:
-    """The k best full-text matches for the query, ranked by ts_rank."""
-    raise NotImplementedError
+    """The k best full-text matches for the query, ranked by ts_rank.
+
+    A chunk matches if it contains any of the query's words, not all of them
+    """
+    # plainto_tsquery drops stopwords, stems the rest and ANDs them: '-1021' & 'mean'.
+    # Swapping ' & ' for ' | ' makes it OR. The query is built once, in FROM, as q.
+    # `id` breaks ties so equal ranks always come back in the same order.
+    sql = """
+        SELECT id, doc_path, heading_path, url, content, ts_rank(tsv, q) AS rank
+        FROM chunks,
+             CAST(replace(plainto_tsquery('english', %s)::text, ' & ', ' | ') AS tsquery) AS q
+        WHERE tsv @@ q
+        ORDER BY rank DESC, id
+        LIMIT %s
+    """
+    rows = conn.execute(sql, (query, k)).fetchall()
+    return [SearchResult(*row) for row in rows]
 
 
 def reciprocal_rank_fusion(
