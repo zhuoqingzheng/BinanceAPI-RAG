@@ -1,6 +1,6 @@
 """Search: vector, keyword (full-text) and hybrid."""
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 
 from pgvector import Vector
 
@@ -55,9 +55,28 @@ def reciprocal_rank_fusion(
     result_lists: list[list[SearchResult]], k: int = 60
 ) -> list[SearchResult]:
     """Merge ranked lists: each chunk scores the sum of 1 / (k + rank) over the lists."""
-    raise NotImplementedError
+    scoreLookUp: dict[int, float] = {}
+    resultLookUp: dict[int, SearchResult] = {}
+    response = []
+    for result_list in result_lists:
+        for rank, result in enumerate(result_list, start = 1):
+            chunk_id = result.chunk_id
+            if (resultLookUp.get(chunk_id) is None):
+                scoreLookUp[chunk_id] = 0
+                resultLookUp[chunk_id] = result
+            scoreLookUp[chunk_id] += 1 / (k + rank) 
+            resultLookUp[chunk_id] = result
+
+    ranked_ids = sorted(scoreLookUp, key=lambda cid: scoreLookUp[cid], reverse=True)
+    for id in ranked_ids:
+        result = resultLookUp[id]
+        result = replace(result, score=scoreLookUp[id])
+        response.append(result)
+    return response
+    
+
 
 
 def hybrid_search(conn, embedder, query: str, k: int = 5) -> list[SearchResult]:
     """Vector search + keyword search, merged with reciprocal_rank_fusion."""
-    raise NotImplementedError
+    
