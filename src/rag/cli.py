@@ -160,10 +160,7 @@ def main() -> None:
     p.set_defaults(func=cmd_ask)
 
     args = parser.parse_args()
-    try:
-        args.func(args, load_settings())
-    except NotImplementedError as e:
-        raise SystemExit(f"Not implemented yet: {e}") from None
+    args.func(args, load_settings())
 
 
 if __name__ == "__main__":

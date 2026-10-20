@@ -25,18 +25,18 @@ class Chunk:
 
 
 def chunk_markdown(text: str, doc_path: str, max_tokens: int = 800) -> list[Chunk]:
-    """Split one Markdown file into a list of Chunks.
+    """Split one Markdown file into a list of Chunks, one or more per section.
 
-    Rules (each one has a test in tests/test_chunking.py):
+    The rules are numbered to match the tests in tests/test_chunking.py.
 
-    1. Table of contents. Remove the auto-generated table of contents: every
-       line from the one containing "<!-- START doctoc" to the one containing
-       "<!-- END doctoc", inclusive. (In these docs the TOC happens to sit
-       before the first heading, so rule 3 would drop it anyway. But many
-       Markdown files put it right after the title, so handle it explicitly.)
+    1. Table of contents. The auto-generated table of contents is removed:
+       every line from the one containing "<!-- START doctoc" to the one
+       containing "<!-- END doctoc", inclusive. In these docs it sits before
+       the first heading, where rule 3 would drop it anyway, but many Markdown
+       files put it right after the title.
 
     2. Headings. A heading is a line that starts with 1 to 6 "#" characters
-       followed by a space, e.g. "## Trading endpoints". But lines inside fenced
+       followed by a space, e.g. "## Trading endpoints". Lines inside fenced
        code blocks are never headings: the docs contain shell code with comment
        lines like "# Sign the request". A line whose stripped text starts with
        ``` opens a code block, and the next such line closes it.
@@ -54,24 +54,23 @@ def chunk_markdown(text: str, doc_path: str, max_tokens: int = 800) -> list[Chun
            ### LOT_SIZE               -> "Filters > Symbol filters > LOT_SIZE"
            ## Exchange Filters        -> "Filters > Exchange Filters"
 
-    5. Content. Strip whitespace from the start and end of each section's
-       content. A section with no content (a heading directly followed by
+    5. Content. Each section's content is stripped of leading and trailing
+       whitespace. A section with no content (a heading directly followed by
        another heading) produces no chunk, but its title still appears in its
        children's heading paths.
 
-    6. Anchors. Create one AnchorMaker for the whole file and call it once for
-       every heading, in order, including headings of empty sections.
-       Otherwise repeated headings get the wrong "-1", "-2" suffixes.
+    6. Anchors. One AnchorMaker covers the whole file and sees every heading
+       in order, including headings of empty sections, so repeated headings
+       get the same "-1", "-2" suffixes as on GitHub.
 
-    7. Long sections. If estimate_tokens(content) > max_tokens, split the
-       content into parts:
-         - Split only at blank lines that are outside code blocks, so every
-           paragraph, list, table and code block stays whole. Call these
-           pieces "blocks".
-         - Fill each part with consecutive blocks for as long as the part stays
-           within max_tokens (blocks joined with a blank line, "\\n\\n").
+    7. Long sections. Content over max_tokens (estimate_tokens) is split into
+       parts:
+         - It is split only at blank lines outside code blocks, so every
+           paragraph, list, table and code block ("block") stays whole.
+         - Each part takes consecutive blocks for as long as it stays within
+           max_tokens (blocks joined with a blank line, "\\n\\n").
          - A single block bigger than max_tokens becomes a part on its own.
-         - Number the parts 1, 2, 3...; they share the heading_path and anchor.
+         - Parts are numbered 1, 2, 3... and share the heading_path and anchor.
     """
     current_title = None
     current_lines = []
@@ -110,8 +109,12 @@ def chunk_markdown(text: str, doc_path: str, max_tokens: int = 800) -> list[Chun
     return chunks
 
 
-# a helper function that creates the correct heading path for each chunk
 def generate_heading_paths(levels, current_level, current_title) -> str:
+    """Return the heading path for a new heading (rule 4).
+
+    `levels` is a stack of (level, title) pairs for the headings still open. It
+    is updated in place: headings at this level or deeper are closed first.
+    """
     while levels and levels[-1][0] >= current_level:
         levels.pop()
     levels.append((current_level, current_title))
@@ -119,8 +122,8 @@ def generate_heading_paths(levels, current_level, current_title) -> str:
     return " > ".join(title for _, title in levels)
 
 
-# a helper function that removes the auto-generated table of contents (rule 1)
 def remove_table_contents(text: str) -> str:
+    """Remove the auto-generated doctoc table of contents (rule 1)."""
     kept = []
     in_toc = False
     for line in text.splitlines():
