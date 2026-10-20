@@ -1,8 +1,4 @@
-"""Small helpers used by chunking.py.
-
-These are provided so chunking.py can focus on the interesting part: deciding
-where chunks start and end.
-"""
+"""Helpers for chunking: a rough token count and GitHub heading anchors."""
 
 import math
 import re

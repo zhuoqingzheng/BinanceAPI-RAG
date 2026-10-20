@@ -2,7 +2,35 @@
 
 A question-answering assistant over [Binance's Spot API documentation](https://github.com/binance/binance-spot-api-docs). It retrieves the relevant doc sections with **hybrid search** (vector search with pgvector + Postgres full-text search, merged with Reciprocal Rank Fusion) and answers with **citations** linking to the exact section on GitHub. A small **eval set** measures how often retrieval finds the right section.
 
-> Status: work in progress. Ingest pipeline and database done; chunking, search, answers and eval in progress.
+> Status: the full pipeline works with vector search: `rag ask` answers from the docs and cites its sources. Next: keyword and hybrid search, then the retrieval eval.
+
+## Example
+
+```
+$ uv run rag ask "How do I place a new order?"
+You can place a new order either via the REST endpoint or the WebSocket method.
+
+REST
+- Endpoint: "POST /api/v3/order" [4].
+- Mandatory request parameters (per table): symbol, side, type, timestamp. [...] [4].
+- Note: "Some additional mandatory parameters based on order `type`" — see the
+  type-specific table (e.g., LIMIT requires timeInForce, price, quantity; MARKET
+  requires quantity or quoteOrderQty; [...]) [1][4].
+
+WebSocket
+- Method: send an "order.place" request with JSON params (example shown) [3].
+[...]
+
+Sources:
+[1] web-socket-api.md > Public API requests > Trading requests > Place new order (TRADE)
+    https://github.com/binance/binance-spot-api-docs/blob/f0ee79c.../web-socket-api.md#place-new-order-trade
+[3] web-socket-api.md > Public API requests > Trading requests > Place new order (TRADE)
+    https://github.com/binance/binance-spot-api-docs/blob/f0ee79c.../web-socket-api.md#place-new-order-trade
+[4] rest-api.md > Public API Endpoints > Trading endpoints > New order (TRADE)
+    https://github.com/binance/binance-spot-api-docs/blob/f0ee79c.../rest-api.md#new-order-trade
+```
+
+Output shortened where marked `[...]`. Sources [1] and [3] are two parts of the same long section.
 
 ## How it works
 
@@ -45,8 +73,8 @@ uv run rag init-db            # create the table and indexes
 | `uv run rag chunks --file filters.md` | Print the chunks for one file | none |
 | `uv run rag ingest` | Chunk, embed and store everything (replaces existing rows) | ~244k tokens ≈ US$0.005 at $0.02 per 1M tokens (Oct 2026) |
 | `uv run rag init-db --reset` | Drop and recreate the table, deleting all chunks. Needed after changing `EMBEDDING_DIMS` | none |
-| `uv run rag search "your question"` | Search the docs (`--mode` hybrid, vector or keyword; `-k` results). Not implemented yet | one tiny embedding call (hybrid and vector modes) |
-| `uv run rag ask "your question"` | Answer from the top 5 chunks, citing them, with links to each cited section | one embedding call + one `ANSWER_MODEL` call |
+| `uv run rag search "your question" --mode vector` | Search the docs and list the top sections (`-k` results). `vector` works; `keyword` and `hybrid` (the default) are not implemented yet | one tiny embedding call (vector and hybrid modes) |
+| `uv run rag ask "your question"` | Answer from the top 5 chunks (vector search for now), citing them, with links to each cited section | one embedding call + one `ANSWER_MODEL` call |
 | `uv run pytest` | Run the tests | none |
 
 Set `EMBEDDING_PROVIDER=fake` in `.env` to run `ingest` offline with meaningless vectors, which is useful for testing the pipeline without spending anything.

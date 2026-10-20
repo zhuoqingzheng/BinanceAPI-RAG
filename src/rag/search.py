@@ -1,9 +1,5 @@
-"""Search: vector, keyword (full-text) and hybrid.
-
->>> YOUR NEXT TASK, after chunking. We'll go through the spec and tests together. <<<
-"""
-
 from dataclasses import dataclass
+from pgvector import Vector
 
 
 @dataclass(frozen=True)
@@ -16,9 +12,20 @@ class SearchResult:
     score: float
 
 
-def vector_search(conn, query_embedding: list[float], k: int = 20) -> list[SearchResult]:
+def vector_search(
+    conn, query_embedding: list[float], k: int = 20
+) -> list[SearchResult]:
     """The k chunks whose embeddings are closest to the query's (cosine distance)."""
-    raise NotImplementedError
+    sql = """
+        SELECT id, doc_path, heading_path, url, content,
+            1 - (%s <=> embedding) AS similarity
+        FROM chunks
+        ORDER BY %s <=> embedding
+        LIMIT %s;
+    """
+    vec = Vector(query_embedding)
+    rows = conn.execute(sql, (vec, vec, k)).fetchall()
+    return [SearchResult(row[0], row[1], row[2], row[3], row[4], row[5]) for row in rows]
 
 
 def keyword_search(conn, query: str, k: int = 20) -> list[SearchResult]:
@@ -26,7 +33,9 @@ def keyword_search(conn, query: str, k: int = 20) -> list[SearchResult]:
     raise NotImplementedError
 
 
-def reciprocal_rank_fusion(result_lists: list[list[SearchResult]], k: int = 60) -> list[SearchResult]:
+def reciprocal_rank_fusion(
+    result_lists: list[list[SearchResult]], k: int = 60
+) -> list[SearchResult]:
     """Merge ranked lists: each chunk scores the sum of 1 / (k + rank) over the lists."""
     raise NotImplementedError
 
