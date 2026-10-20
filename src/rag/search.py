@@ -1,4 +1,7 @@
+"""Search: vector, keyword (full-text) and hybrid."""
+
 from dataclasses import dataclass
+
 from pgvector import Vector
 
 
@@ -25,7 +28,7 @@ def vector_search(
     """
     vec = Vector(query_embedding)
     rows = conn.execute(sql, (vec, vec, k)).fetchall()
-    return [SearchResult(row[0], row[1], row[2], row[3], row[4], row[5]) for row in rows]
+    return [SearchResult(*row) for row in rows]
 
 
 def keyword_search(conn, query: str, k: int = 20) -> list[SearchResult]:

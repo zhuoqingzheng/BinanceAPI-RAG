@@ -1,14 +1,4 @@
-"""Split a Markdown document into chunks for search.
-
->>> YOUR TASK: implement chunk_markdown() below. <<<
-
-Run the tests with:   uv run pytest tests/test_chunking.py -v
-Preview real chunks:  uv run rag chunks --file filters.md
-
-You can use these helpers (already written, in markdown_utils.py):
-  - estimate_tokens(text) -> int     rough token count (characters / 4)
-  - AnchorMaker()                    turns heading text into GitHub #anchors
-"""
+"""Split a Markdown document into chunks for search."""
 
 import re
 from dataclasses import dataclass
