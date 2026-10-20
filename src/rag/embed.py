@@ -32,7 +32,9 @@ class OpenAIEmbedder:
                 model=self._model, input=batch, dimensions=self._dims
             )
             # Sort by index so vectors line up with inputs, whatever order the API uses.
-            vectors.extend(item.embedding for item in sorted(response.data, key=lambda d: d.index))
+            vectors.extend(
+                item.embedding for item in sorted(response.data, key=lambda d: d.index)
+            )
         return vectors
 
 
@@ -66,7 +68,9 @@ def get_embedder(settings: Settings) -> Embedder:
         return FakeEmbedder(settings.embedding_dims)
     if settings.embedding_provider == "openai":
         if not settings.openai_api_key:
-            raise SystemExit("OPENAI_API_KEY is not set. Add it to .env, or set EMBEDDING_PROVIDER=fake.")
+            raise SystemExit(
+                "OPENAI_API_KEY is not set. Add it to .env, or set EMBEDDING_PROVIDER=fake."
+            )
         return OpenAIEmbedder(
             settings.openai_api_key, settings.embedding_model, settings.embedding_dims
         )

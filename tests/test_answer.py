@@ -1,6 +1,12 @@
 """Tests for the answer step. A fake LLM stands in for the API, so these cost nothing."""
 
-from rag.answer import INSTRUCTIONS, Answer, answer_question, build_prompt, cited_sources
+from rag.answer import (
+    INSTRUCTIONS,
+    Answer,
+    answer_question,
+    build_prompt,
+    cited_sources,
+)
 from rag.search import SearchResult
 
 
@@ -27,8 +33,14 @@ class FakeLLM:
 
 def test_prompt_numbers_sources_from_1_and_ends_with_the_question():
     prompt = build_prompt("How do I place an order?", [_result(1), _result(2)])
-    assert "[1] rest-api.md > Trading endpoints > Endpoint 1\nContent of endpoint 1." in prompt
-    assert "[2] rest-api.md > Trading endpoints > Endpoint 2\nContent of endpoint 2." in prompt
+    assert (
+        "[1] rest-api.md > Trading endpoints > Endpoint 1\nContent of endpoint 1."
+        in prompt
+    )
+    assert (
+        "[2] rest-api.md > Trading endpoints > Endpoint 2\nContent of endpoint 2."
+        in prompt
+    )
     assert prompt.endswith("Question: How do I place an order?")
 
 
@@ -37,7 +49,9 @@ def test_answer_sends_instructions_and_prompt_to_the_llm():
     results = [_result(1), _result(2)]
     answer = answer_question("How do I place an order?", results, llm)
     assert answer == Answer("Use POST /api/v3/order [1].", results)
-    assert llm.calls == [(INSTRUCTIONS, build_prompt("How do I place an order?", results))]
+    assert llm.calls == [
+        (INSTRUCTIONS, build_prompt("How do I place an order?", results))
+    ]
 
 
 def test_no_results_means_no_llm_call():

@@ -47,7 +47,7 @@ def test_rule2_hash_lines_inside_code_blocks_are_not_headings():
         "\n"
         "```bash\n"
         "# Sign the request\n"
-        "signature=$(echo -n \"$params\" | openssl dgst -sha256)\n"
+        'signature=$(echo -n "$params" | openssl dgst -sha256)\n'
         "```\n"
         "\n"
         "After the code.\n"
@@ -122,7 +122,9 @@ def test_rule5_content_is_stripped_and_empty_sections_skipped():
 
 
 def test_rule5_empty_parent_still_appears_in_child_path():
-    md = "# Doc\n\n## Trading endpoints\n\n### New order (TRADE)\n\nPOST /api/v3/order\n"
+    md = (
+        "# Doc\n\n## Trading endpoints\n\n### New order (TRADE)\n\nPOST /api/v3/order\n"
+    )
     chunks = chunk_markdown(md, "rest-api.md")
     assert len(chunks) == 1
     assert chunks[0].heading_path == "Doc > Trading endpoints > New order (TRADE)"
@@ -223,7 +225,9 @@ def test_real_docs_smoke():
     # Must stay under the embedding model's input limit (8,191 tokens).
     assert max(estimate_tokens(c.embedding_text) for c in all_chunks) < 8191
 
-    lot_size = [c for c in all_chunks if c.doc_path == "filters.md" and c.anchor == "lot_size"]
+    lot_size = [
+        c for c in all_chunks if c.doc_path == "filters.md" and c.anchor == "lot_size"
+    ]
     assert len(lot_size) == 1
     assert lot_size[0].heading_path == "Filters > Symbol filters > LOT_SIZE"
     assert "stepSize" in lot_size[0].content

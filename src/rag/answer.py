@@ -67,7 +67,11 @@ def answer_question(question: str, results: list[SearchResult], llm: LLM) -> Ans
 def cited_sources(answer: Answer) -> list[tuple[int, SearchResult]]:
     """The (number, source) pairs the answer actually cites, in number order."""
     cited = {int(n) for n in re.findall(r"\[(\d+)\]", answer.text)}
-    return [(n, answer.sources[n - 1]) for n in sorted(cited) if 1 <= n <= len(answer.sources)]
+    return [
+        (n, answer.sources[n - 1])
+        for n in sorted(cited)
+        if 1 <= n <= len(answer.sources)
+    ]
 
 
 def get_llm(settings: Settings) -> LLM:

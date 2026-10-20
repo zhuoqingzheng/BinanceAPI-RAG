@@ -30,7 +30,9 @@ class Settings:
 def load_settings() -> Settings:
     load_dotenv(PROJECT_ROOT / ".env")
     return Settings(
-        database_url=os.getenv("DATABASE_URL", "postgresql://rag:rag@localhost:5433/rag"),
+        database_url=os.getenv(
+            "DATABASE_URL", "postgresql://rag:rag@localhost:5433/rag"
+        ),
         openai_api_key=os.getenv("OPENAI_API_KEY") or None,
         embedding_provider=os.getenv("EMBEDDING_PROVIDER", "openai"),
         embedding_model=os.getenv("EMBEDDING_MODEL", "text-embedding-3-small"),

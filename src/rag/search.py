@@ -59,12 +59,12 @@ def reciprocal_rank_fusion(
     resultLookUp: dict[int, SearchResult] = {}
     response = []
     for result_list in result_lists:
-        for rank, result in enumerate(result_list, start = 1):
+        for rank, result in enumerate(result_list, start=1):
             chunk_id = result.chunk_id
-            if (resultLookUp.get(chunk_id) is None):
+            if resultLookUp.get(chunk_id) is None:
                 scoreLookUp[chunk_id] = 0
                 resultLookUp[chunk_id] = result
-            scoreLookUp[chunk_id] += 1 / (k + rank) 
+            scoreLookUp[chunk_id] += 1 / (k + rank)
             resultLookUp[chunk_id] = result
 
     ranked_ids = sorted(scoreLookUp, key=lambda cid: scoreLookUp[cid], reverse=True)
@@ -73,10 +73,13 @@ def reciprocal_rank_fusion(
         result = replace(result, score=scoreLookUp[id])
         response.append(result)
     return response
-    
-
 
 
 def hybrid_search(conn, embedder, query: str, k: int = 5) -> list[SearchResult]:
     """Vector search + keyword search, merged with reciprocal_rank_fusion."""
-    
+    [query_vector] = embedder.embed([query])
+    vector_results = vector_search(conn, query_vector)
+    keyword_results = keyword_search(conn, query)
+    combined_results = [vector_results, keyword_results]
+    rrf_results = reciprocal_rank_fusion(combined_results)
+    return rrf_results[:k]

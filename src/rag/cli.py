@@ -11,8 +11,10 @@ def cmd_fetch_docs(args, settings):
     from rag.sources import ensure_docs, select_files
 
     docs_dir = ensure_docs(settings)
-    print(f"Docs at {docs_dir} (commit {settings.docs_commit[:7]}), "
-          f"{len(select_files(docs_dir))} files selected.")
+    print(
+        f"Docs at {docs_dir} (commit {settings.docs_commit[:7]}), "
+        f"{len(select_files(docs_dir))} files selected."
+    )
 
 
 def cmd_init_db(args, settings):
@@ -34,15 +36,21 @@ def cmd_chunks(args, settings):
     if args.file:
         chunks = [c for c in chunks if c.doc_path == args.file]
         if not chunks:
-            raise SystemExit(f"No chunks for {args.file!r}. Check the name with: uv run rag chunks --stats")
+            raise SystemExit(
+                f"No chunks for {args.file!r}. Check the name with: uv run rag chunks --stats"
+            )
 
     if args.stats:
         sizes = [estimate_tokens(c.embedding_text) for c in chunks]
         per_file = Counter(c.doc_path for c in chunks)
         print(f"{len(per_file)} files, {len(chunks)} chunks, ~{sum(sizes):,} tokens")
-        print(f"tokens per chunk: median {sorted(sizes)[len(sizes) // 2]}, max {max(sizes)}")
+        print(
+            f"tokens per chunk: median {sorted(sizes)[len(sizes) // 2]}, max {max(sizes)}"
+        )
         print(f"chunks over 800 tokens: {sum(s > 800 for s in sizes)}")
-        print(f"sections split into parts: {len({(c.doc_path, c.heading_path) for c in chunks if c.part > 1})}")
+        print(
+            f"sections split into parts: {len({(c.doc_path, c.heading_path) for c in chunks if c.part > 1})}"
+        )
         print("\nchunks per file:")
         for doc_path, n in sorted(per_file.items()):
             print(f"  {n:4}  {doc_path}")
@@ -50,7 +58,9 @@ def cmd_chunks(args, settings):
 
     for i, c in enumerate(chunks[: args.limit], start=1):
         content = c.content if args.full else _shorten(c.content, 300)
-        print(f"── [{i}] {c.heading_path}  (part {c.part}, ~{estimate_tokens(c.embedding_text)} tokens)")
+        print(
+            f"── [{i}] {c.heading_path}  (part {c.part}, ~{estimate_tokens(c.embedding_text)} tokens)"
+        )
         print(f"   {github_url(settings, c.doc_path, c.anchor)}")
         print(content)
         print()
@@ -105,23 +115,35 @@ def _shorten(text: str, limit: int) -> str:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(prog="rag", description="RAG over Binance's Spot API docs")
+    parser = argparse.ArgumentParser(
+        prog="rag", description="RAG over Binance's Spot API docs"
+    )
     sub = parser.add_subparsers(dest="command", required=True)
 
-    sub.add_parser("fetch-docs", help="download the docs at the pinned commit").set_defaults(func=cmd_fetch_docs)
+    sub.add_parser(
+        "fetch-docs", help="download the docs at the pinned commit"
+    ).set_defaults(func=cmd_fetch_docs)
 
     p = sub.add_parser("init-db", help="create the table and indexes")
-    p.add_argument("--reset", action="store_true", help="drop the table first (deletes all chunks)")
+    p.add_argument(
+        "--reset", action="store_true", help="drop the table first (deletes all chunks)"
+    )
     p.set_defaults(func=cmd_init_db)
 
     p = sub.add_parser("chunks", help="preview chunking (no API calls)")
     p.add_argument("--file", help="only this doc, e.g. filters.md")
-    p.add_argument("--stats", action="store_true", help="print statistics instead of chunks")
-    p.add_argument("--limit", type=int, default=20, help="max chunks to print (default 20)")
+    p.add_argument(
+        "--stats", action="store_true", help="print statistics instead of chunks"
+    )
+    p.add_argument(
+        "--limit", type=int, default=20, help="max chunks to print (default 20)"
+    )
     p.add_argument("--full", action="store_true", help="print full chunk text")
     p.set_defaults(func=cmd_chunks)
 
-    sub.add_parser("ingest", help="chunk, embed and store all docs").set_defaults(func=cmd_ingest)
+    sub.add_parser("ingest", help="chunk, embed and store all docs").set_defaults(
+        func=cmd_ingest
+    )
 
     p = sub.add_parser("search", help="search the docs")
     p.add_argument("query")
@@ -131,9 +153,10 @@ def main() -> None:
 
     p = sub.add_parser("ask", help="answer a question from the docs, with citations")
     p.add_argument("question")
-    # Vector for now; switch the default to hybrid once hybrid_search is written.
-    p.add_argument("--mode", choices=["hybrid", "vector", "keyword"], default="vector")
-    p.add_argument("-k", type=int, default=5, help="number of chunks the answer is based on")
+    p.add_argument("--mode", choices=["hybrid", "vector", "keyword"], default="hybrid")
+    p.add_argument(
+        "-k", type=int, default=5, help="number of chunks the answer is based on"
+    )
     p.set_defaults(func=cmd_ask)
 
     args = parser.parse_args()

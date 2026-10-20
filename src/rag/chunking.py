@@ -89,16 +89,24 @@ def chunk_markdown(text: str, doc_path: str, max_tokens: int = 800) -> list[Chun
             in_code = not in_code
         m = None if in_code else re.match(r"(#{1,6}) (.*)", line)
         if m:
-            chunks.extend(make_chunks(doc_path, current_heading_path, anchor, current_lines, max_tokens))
+            chunks.extend(
+                make_chunks(
+                    doc_path, current_heading_path, anchor, current_lines, max_tokens
+                )
+            )
             current_title = m.group(2)
             current_level = len(m.group(1))
             current_lines = []
             anchor = anchors(current_title)
-            current_heading_path = generate_heading_paths(levels, current_level, current_title)
+            current_heading_path = generate_heading_paths(
+                levels, current_level, current_title
+            )
         elif current_title is not None:
             current_lines.append(line)
 
-    chunks.extend(make_chunks(doc_path, current_heading_path, anchor, current_lines, max_tokens))
+    chunks.extend(
+        make_chunks(doc_path, current_heading_path, anchor, current_lines, max_tokens)
+    )
     return chunks
 
 
@@ -108,7 +116,7 @@ def generate_heading_paths(levels, current_level, current_title) -> str:
         levels.pop()
     levels.append((current_level, current_title))
 
-    return ' > '.join(title for _, title in levels)
+    return " > ".join(title for _, title in levels)
 
 
 # a helper function that removes the auto-generated table of contents (rule 1)

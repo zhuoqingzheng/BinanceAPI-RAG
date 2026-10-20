@@ -23,8 +23,10 @@ def ingest(settings: Settings) -> None:
     chunks = build_chunks(settings)
     texts = [c.embedding_text for c in chunks]
     total_tokens = sum(estimate_tokens(t) for t in texts)
-    print(f"{len(chunks)} chunks, ~{total_tokens:,} tokens to embed "
-          f"(provider: {settings.embedding_provider})")
+    print(
+        f"{len(chunks)} chunks, ~{total_tokens:,} tokens to embed "
+        f"(provider: {settings.embedding_provider})"
+    )
 
     # Embed everything BEFORE touching the database, so a failed API call
     # leaves the existing data untouched.

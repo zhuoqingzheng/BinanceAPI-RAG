@@ -55,7 +55,8 @@ def _current_commit(docs_dir: Path) -> str | None:
         return None
     result = subprocess.run(
         ["git", "-C", str(docs_dir), "rev-parse", "HEAD"],
-        capture_output=True, text=True,
+        capture_output=True,
+        text=True,
     )
     return result.stdout.strip() if result.returncode == 0 else None
 
