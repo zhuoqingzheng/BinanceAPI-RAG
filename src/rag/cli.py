@@ -2,8 +2,9 @@
 
 import argparse
 from collections import Counter
+from pathlib import Path
 
-from rag.config import load_settings
+from rag.config import PROJECT_ROOT, load_settings
 from rag.markdown_utils import estimate_tokens
 
 
@@ -110,6 +111,35 @@ def cmd_ask(args, settings):
         print(f"[{number}] {r.doc_path} > {r.heading_path}\n    {r.url}")
 
 
+def cmd_eval(args, settings):
+    from rag.db import connect
+    from rag.embed import get_embedder
+    from rag.evaluation import (
+        DEPTH,
+        format_report,
+        load_questions,
+        missing_sections,
+        run_eval,
+    )
+
+    if not 1 <= args.k <= DEPTH:
+        raise SystemExit(
+            f"-k must be 1 to {DEPTH}: the eval fetches the top {DEPTH} results."
+        )
+    if settings.embedding_provider == "fake":
+        print(
+            "Warning: EMBEDDING_PROVIDER=fake, so vector and hybrid results are meaningless.\n"
+        )
+    questions = load_questions(args.questions)
+    with connect(settings.database_url) as conn:
+        missing = missing_sections(conn, questions)
+        if missing:
+            listed = "\n".join(f"  {qid}: {s.file} > {s.heading}" for qid, s in missing)
+            raise SystemExit(f"Expected sections not found in the database:\n{listed}")
+        ranks = run_eval(conn, get_embedder(settings), questions)
+    print(format_report(questions, ranks, k=args.k))
+
+
 def _shorten(text: str, limit: int) -> str:
     return text if len(text) <= limit else text[:limit].rstrip() + " …"
 
@@ -158,6 +188,16 @@ def main() -> None:
         "-k", type=int, default=5, help="number of chunks the answer is based on"
     )
     p.set_defaults(func=cmd_ask)
+
+    p = sub.add_parser("eval", help="retrieval eval: hit@k and MRR per search mode")
+    p.add_argument(
+        "--questions",
+        type=Path,
+        default=PROJECT_ROOT / "eval" / "questions.jsonl",
+        help="questions file (default eval/questions.jsonl)",
+    )
+    p.add_argument("-k", type=int, default=5, help="k for hit@k and MRR@k (default 5)")
+    p.set_defaults(func=cmd_eval)
 
     args = parser.parse_args()
     args.func(args, load_settings())
